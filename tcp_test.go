@@ -16,7 +16,7 @@ const in1 = "Hello from the first"
 const in2 = "Hello from the other side"
 
 func TestTCPServ(t *testing.T) {
-	go StartTCPServ(PORT, "tcp")
+	go StartTCPServ(PORT, "tcp", false)
 	time.Sleep(1 * time.Second)
 
 	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", PORT))
@@ -47,7 +47,7 @@ func TestTCPHandle(t *testing.T) {
 		<-ready
 		conn, err := net.Dial("tcp", addr)
 		assert.Nil(t, err)
-		handleConn(conn, in, out)
+		handleConn(conn, in, out, false)
 		done <- struct{}{}
 	}()
 
