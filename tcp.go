@@ -10,45 +10,8 @@ import (
 	"strings"
 )
 
-type Progress struct {
-	direction string
-	bytes     uint64
-}
-
 func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
 	defer conn.Close()
-
-	// pr := make(chan Progress)
-	// exit := make(chan struct{})
-
-	// INFO: this would be a great way for bidirectional communication but I guess I'll have to rewrite this
-	// this reads from stdin and writes to the connection
-	// go func() {
-	// 	n, err := io.Copy(conn, in)
-	// 	if err != nil {
-	// 		log.Printf("[%s] ERROR: %v\n", conn.RemoteAddr().String(), err)
-	// 	}
-	// 	pr <- Progress{"sent to conn", uint64(n)}
-	// 	close(exit)
-	// }()
-	//
-	// // this reads from the connection output and writes to stdout
-	// go func() {
-	// 	n, err := io.Copy(out, conn)
-	// 	if err != nil {
-	// 		log.Printf("[%s] ERROR: %v\n", conn.RemoteAddr().String(), err)
-	// 	}
-	// 	pr <- Progress{"received from conn", uint64(n)}
-	// 	close(exit)
-	// }()
-	//
-	// select {
-	// case p := <-pr:
-	// 	// this is the total of bytes sent and received when connection ends
-	// 	log.Printf("[%s] %s: %d bytes\n", conn.RemoteAddr().String(), p.direction, p.bytes)
-	// case <-exit:
-	// 	log.Printf("[%s] Connection closed\n", conn.RemoteAddr().String())
-	// }
 
 	r := bufio.NewReader(conn)
 	for {
@@ -65,8 +28,9 @@ func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
 		if strings.HasPrefix(msg, "cmd: ") {
 			command := strings.TrimPrefix(msg, "cmd: ")
 			log.Printf("Executing command: %s\n", command)
-			out := executeCmd(command)
-			conn.Write([]byte(out))
+			output := executeCmd(command)
+			fmt.Printf("Command output: \n%s\n", output)
+			conn.Write([]byte(output + "EOF\n"))
 			continue
 		}
 
@@ -75,10 +39,11 @@ func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
 			fmt.Printf("%s>", conn.RemoteAddr().String())
 			s := bufio.NewScanner(in)
 			if s.Scan() {
-				conn.Write([]byte(s.Text() + "\n"))
+				conn.Write([]byte(s.Text() + "EOF\n"))
 			}
 		} else {
 			fmt.Printf("Received: %s", msg)
+			conn.Write([]byte("\n"))
 			continue
 		}
 	}
@@ -110,12 +75,13 @@ func StartTCPClient(host, port, protocol string, bidir bool) {
 	log.Printf("Connected to %s\n", addr)
 
 	defer conn.Close()
-	// handleConn(conn, os.Stdin, os.Stdout, bidir)
 
 	s := bufio.NewScanner(os.Stdin)
+	r := bufio.NewReader(conn)
 	for {
 		fmt.Printf("%s> ", conn.RemoteAddr().String())
 		if !s.Scan() {
+			fmt.Println("Error reading from stdin")
 			break
 		}
 
@@ -126,12 +92,19 @@ func StartTCPClient(host, port, protocol string, bidir bool) {
 			break
 		}
 
-		rep, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			fmt.Println("Server closed connection")
-			break
+		var resp string
+		for {
+			line, err := r.ReadString('\n')
+			if err != nil {
+				// fmt.Println("Server closed connection")
+				break
+			}
+			if line == "EOF\n" {
+				break
+			}
+			resp += line
 		}
 
-		fmt.Printf("Server output: %s", rep)
+		fmt.Print(resp)
 	}
 }

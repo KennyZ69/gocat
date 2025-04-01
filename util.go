@@ -22,7 +22,7 @@ func executeCmd(command string) string {
 	cmd := exec.Command("sh", "-c", command)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Sprintf("Error executing command: %v", err)
+		return fmt.Sprintf("Error executing command: %v\n", err)
 	}
 
 	return string(out)
