@@ -10,12 +10,12 @@ import (
 	"strings"
 )
 
-func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
+func handleConn(conn net.Conn, in io.Reader, bidir bool) {
 	defer conn.Close()
 
 	r := bufio.NewReader(conn)
 	for {
-		msg, err := r.ReadString('\n')
+		command, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
 				log.Println("Connection closed by peer")
@@ -25,13 +25,16 @@ func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
 			return
 		}
 
-		if strings.HasPrefix(msg, "cmd: ") {
-			command := strings.TrimPrefix(msg, "cmd: ")
+		if strings.HasPrefix(command, "msg: ") {
+			message := strings.TrimPrefix(command, "msg: ")
+			fmt.Printf("Received message: %s\n", message)
+			conn.Write([]byte("ACK\nEOF\n"))
+			continue
+		} else {
 			log.Printf("Executing command: %s\n", command)
 			output := executeCmd(command)
 			fmt.Printf("Command output: \n%s\n", output)
 			conn.Write([]byte(output + "EOF\n"))
-			continue
 		}
 
 		if bidir {
@@ -41,10 +44,6 @@ func handleConn(conn net.Conn, in io.Reader, out io.Writer, bidir bool) {
 			if s.Scan() {
 				conn.Write([]byte(s.Text() + "EOF\n"))
 			}
-		} else {
-			fmt.Printf("Received: %s", msg)
-			conn.Write([]byte("\n"))
-			continue
 		}
 	}
 }
@@ -63,7 +62,7 @@ func StartTCPServ(port, protocol string, bidir bool) {
 	}
 
 	log.Printf("Established connection from %s\n", conn.RemoteAddr().String())
-	handleConn(conn, os.Stdin, os.Stdout, bidir)
+	handleConn(conn, os.Stdin, bidir)
 }
 
 func StartTCPClient(host, port, protocol string, bidir bool) {
@@ -96,7 +95,6 @@ func StartTCPClient(host, port, protocol string, bidir bool) {
 		for {
 			line, err := r.ReadString('\n')
 			if err != nil {
-				// fmt.Println("Server closed connection")
 				break
 			}
 			if line == "EOF\n" {
