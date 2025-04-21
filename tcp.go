@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,6 +30,16 @@ func handleConn(conn net.Conn, in io.Reader, bidir bool) {
 			message := strings.TrimPrefix(command, "msg: ")
 			fmt.Printf("Received message: %s\n", message)
 			conn.Write([]byte("ACK\nEOF\n"))
+			continue
+		} else if strings.HasPrefix(command, "file: ") {
+			filePath := strings.TrimSpace(strings.TrimPrefix(command, "file: "))
+			filename := filepath.Base(filePath)
+			// if err := sendFile(conn, filePath); err != nil {
+			// 	log.Printf("Error sending file: %s\n", err)
+			// }
+			if err := receiveFile(r, conn, filename); err != nil {
+				log.Printf("Error sending file: %s\n", err)
+			}
 			continue
 		} else {
 			log.Printf("Executing command: %s\n", command)
@@ -89,6 +100,12 @@ func StartTCPClient(host, port, protocol string, bidir bool) {
 		if in == "exit" {
 			fmt.Println("Exiting gracefully ...")
 			break
+		} else if strings.HasPrefix(in, "file: ") {
+			filePath := strings.TrimSpace(strings.TrimPrefix(in, "file: "))
+			if err := sendFile(conn, filePath); err != nil {
+				log.Printf("Error sending file: %s\n", err)
+			}
+			continue
 		}
 
 		var resp string
