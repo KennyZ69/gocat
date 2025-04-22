@@ -16,6 +16,9 @@ func usage() {
 	fmt.Println("Examples:")
 	fmt.Println("  gocat -l -p 8080\tListen on port 8080")
 	fmt.Println("  gocat -h 127.0.0.1 -p 4444\tConnect to localhost on port 4444")
+	fmt.Println("  gocat -u -l\tListen for UDP connections")
+	fmt.Printf("\n  x> msg: xxx\t To send a message, otherwise a command will be executed\n")
+	fmt.Printf("\n  x> file: xxx.txt\t To send a file over the connection\n")
 }
 
 func executeCmd(command string) string {

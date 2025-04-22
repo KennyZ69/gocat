@@ -34,12 +34,22 @@ func handleConn(conn net.Conn, in io.Reader, bidir bool) {
 		} else if strings.HasPrefix(command, "file: ") {
 			filePath := strings.TrimSpace(strings.TrimPrefix(command, "file: "))
 			filename := filepath.Base(filePath)
-			// if err := sendFile(conn, filePath); err != nil {
-			// 	log.Printf("Error sending file: %s\n", err)
+
+			// fmt.Printf("Receiving file '%s'. Accept? (y/n)\n", filename)
+			// scan := bufio.NewScanner(in)
+			// if strings.ToLower(scan.Text()) != "y" {
+			// 	conn.Write([]byte("File transfer rejected\nEOF\n"))
+			// 	continue
 			// }
+
+			conn.Write([]byte("Getting file: " + filename + "\n"))
+
 			if err := receiveFile(r, conn, filename); err != nil {
-				log.Printf("Error sending file: %s\n", err)
+				log.Printf("Error getting file: %s\n", err)
+				conn.Write([]byte("Error receiving file on remote\nEOF\n"))
+				continue
 			}
+			conn.Write([]byte("File received\nEOF\n"))
 			continue
 		} else {
 			log.Printf("Executing command: %s\n", command)
